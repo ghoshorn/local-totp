@@ -6,7 +6,7 @@ Secrets are held only in browser memory. The site has no API, database, analytic
 
 ## Development
 
-Node 22 or later is required. If you use `nvm`:
+Node 22.23.3 or later is required. If you use `nvm`:
 
 ```sh
 nvm use
@@ -29,7 +29,8 @@ yarn build
    - **Production branch:** `main`
    - **Build command:** `yarn build`
    - **Build output directory:** `dist`
-   - **Node.js version:** `22`
+   - **Environment variable:** `YARN_VERSION` = `1.22.22` for both Production and Preview.
+   - **Environment variable:** `NODE_VERSION` = `22.23.3` for both Production and Preview (the committed `.nvmrc` already requests this version).
 4. Deploy. Each push to `main` creates a production deployment; pull requests receive preview deployments.
 
 The [`public/_headers`](public/_headers) file is copied to `dist/_headers` by Vite and configures the security headers supported by Cloudflare Pages.
