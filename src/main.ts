@@ -1,4 +1,13 @@
 import './style.css'
+import {
+  clearAccounts,
+  createSavedAccount,
+  loadAccounts,
+  saveAccounts,
+  type SavedAccount,
+  updateSavedAccount,
+  validateAccountDetails,
+} from './account-store.ts'
 import { createTotp, normalizeSecret, TOTP_PERIOD_SECONDS } from './totp.ts'
 
 const app = document.querySelector<HTMLDivElement>('#app')
@@ -23,10 +32,35 @@ app.innerHTML = `
       <header class="intro">
         <p class="eyebrow">Local TOTP</p>
         <h1 id="page-title">Two-factor code generator</h1>
-        <p class="intro-copy">Generate a time-based one-time password directly in your browser.</p>
+        <p class="intro-copy">Generate time-based one-time passwords directly in your browser.</p>
       </header>
 
+      <section class="saved-accounts" aria-labelledby="saved-accounts-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="saved-accounts-heading">Saved accounts</h2>
+            <p>Select an account stored in this browser.</p>
+          </div>
+          <button id="clear-all" class="text-button" type="button">Clear all</button>
+        </div>
+        <label class="sr-only" for="account-select">Saved account</label>
+        <select id="account-select">
+          <option value="">Select a saved account</option>
+        </select>
+        <p id="storage-message" class="storage-message" role="alert"></p>
+      </section>
+
       <form id="totp-form" novalidate>
+        <label for="account-name">Account name</label>
+        <input
+          id="account-name"
+          name="account-name"
+          type="text"
+          maxlength="100"
+          autocomplete="off"
+          placeholder="For example, GitHub"
+        >
+
         <label for="secret">2FA secret key</label>
         <div class="input-row">
           <input
@@ -42,8 +76,15 @@ app.innerHTML = `
           >
           <button id="generate" type="submit">Generate</button>
         </div>
-        <p id="secret-help" class="field-help">Spaces and hyphens are ignored. Your secret never leaves this browser.</p>
+        <p id="secret-help" class="field-help">Spaces and hyphens are ignored. TOTP codes are calculated in this browser.</p>
         <p id="validation-message" class="validation-message" role="alert"></p>
+
+        <div class="account-actions" aria-label="Saved account actions">
+          <button id="save-new" type="button" class="secondary-button">Save as new</button>
+          <button id="update-account" type="button" class="secondary-button" disabled>Update saved</button>
+          <button id="delete-account" type="button" class="danger-button" disabled>Delete</button>
+        </div>
+        <p id="account-status" class="account-status" role="status" aria-live="polite"></p>
       </form>
 
       <section id="code-panel" class="code-panel" hidden aria-labelledby="code-label">
@@ -59,15 +100,23 @@ app.innerHTML = `
 
       <aside class="privacy-note" aria-label="Privacy notice">
         <h2>Private by design</h2>
-        <p>Your secret is used only in this tab to calculate the code. It is not sent to a server, saved, or included in links.</p>
+        <p>Saved names and secrets stay in this browser's local storage. They are not uploaded or included in links. Anyone with access to this browser profile can use saved accounts.</p>
       </aside>
     </section>
   </main>
 `
 
 const form = requiredElement<HTMLFormElement>('#totp-form')
+const accountSelect = requiredElement<HTMLSelectElement>('#account-select')
+const accountNameInput = requiredElement<HTMLInputElement>('#account-name')
 const secretInput = requiredElement<HTMLInputElement>('#secret')
 const validationMessage = requiredElement<HTMLParagraphElement>('#validation-message')
+const accountStatus = requiredElement<HTMLParagraphElement>('#account-status')
+const storageMessage = requiredElement<HTMLParagraphElement>('#storage-message')
+const saveNewButton = requiredElement<HTMLButtonElement>('#save-new')
+const updateAccountButton = requiredElement<HTMLButtonElement>('#update-account')
+const deleteAccountButton = requiredElement<HTMLButtonElement>('#delete-account')
+const clearAllButton = requiredElement<HTMLButtonElement>('#clear-all')
 const codePanel = requiredElement<HTMLElement>('#code-panel')
 const codeOutput = requiredElement<HTMLOutputElement>('#code')
 const timer = requiredElement<HTMLProgressElement>('#timer')
@@ -75,6 +124,8 @@ const countdown = requiredElement<HTMLParagraphElement>('#countdown')
 const copyButton = requiredElement<HTMLButtonElement>('#copy')
 const copyStatus = requiredElement<HTMLParagraphElement>('#copy-status')
 
+let accounts: SavedAccount[] = []
+let storageReady = true
 let activeSecret = ''
 let currentCode = ''
 let totp = null as ReturnType<typeof createTotp> | null
@@ -85,6 +136,57 @@ function clearCode(): void {
   currentCode = ''
   codePanel.hidden = true
   copyButton.disabled = true
+}
+
+function selectedAccount(): SavedAccount | undefined {
+  return accounts.find((account) => account.id === accountSelect.value)
+}
+
+function updateAccountActionState(): void {
+  const hasSelectedAccount = selectedAccount() !== undefined
+  saveNewButton.disabled = !storageReady
+  updateAccountButton.disabled = !storageReady || !hasSelectedAccount
+  deleteAccountButton.disabled = !storageReady || !hasSelectedAccount
+}
+
+function renderAccountOptions(selectedId = accountSelect.value): void {
+  const placeholder = new Option('Select a saved account', '')
+  accountSelect.replaceChildren(placeholder)
+
+  for (const account of accounts) {
+    accountSelect.append(new Option(account.name, account.id))
+  }
+
+  accountSelect.value = accounts.some((account) => account.id === selectedId)
+    ? selectedId
+    : ''
+  updateAccountActionState()
+}
+
+function showStorageFailure(message: string): void {
+  storageReady = false
+  storageMessage.textContent = message
+  updateAccountActionState()
+}
+
+function persistAccounts(
+  nextAccounts: SavedAccount[],
+  selectedId: string,
+  successMessage: string,
+): boolean {
+  const result = saveAccounts(nextAccounts)
+
+  if (result.error) {
+    showStorageFailure(result.error)
+    return false
+  }
+
+  accounts = nextAccounts
+  storageReady = true
+  storageMessage.textContent = ''
+  renderAccountOptions(selectedId)
+  accountStatus.textContent = successMessage
+  return true
 }
 
 function renderCode(): boolean {
@@ -121,6 +223,26 @@ function renderCode(): boolean {
   return true
 }
 
+function currentAccountDetails(): { name: string; secret: string } | null {
+  const result = validateAccountDetails(accountNameInput.value, secretInput.value)
+
+  if (result.error) {
+    accountStatus.textContent = result.error
+    return null
+  }
+
+  return result.details
+}
+
+function hasDuplicateName(name: string, exceptAccountId?: string): boolean {
+  return accounts.some(
+    (account) =>
+      account.id !== exceptAccountId && account.name.localeCompare(name, undefined, {
+        sensitivity: 'accent',
+      }) === 0,
+  )
+}
+
 async function copyCurrentCode(): Promise<void> {
   if (!currentCode) {
     return
@@ -144,11 +266,129 @@ form.addEventListener('submit', (event) => {
 
 secretInput.addEventListener('input', () => {
   copyStatus.textContent = ''
+  accountStatus.textContent = ''
   renderCode()
+})
+
+accountNameInput.addEventListener('input', () => {
+  accountStatus.textContent = ''
+})
+
+accountSelect.addEventListener('change', () => {
+  const account = selectedAccount()
+  accountStatus.textContent = ''
+  copyStatus.textContent = ''
+
+  if (!account) {
+    accountNameInput.value = ''
+    secretInput.value = ''
+    clearCode()
+    updateAccountActionState()
+    return
+  }
+
+  accountNameInput.value = account.name
+  secretInput.value = account.secret
+  renderCode()
+  updateAccountActionState()
+})
+
+saveNewButton.addEventListener('click', () => {
+  const details = currentAccountDetails()
+
+  if (!details) {
+    return
+  }
+
+  if (hasDuplicateName(details.name)) {
+    accountStatus.textContent = 'Choose a unique account name.'
+    return
+  }
+
+  const account = createSavedAccount(details)
+  secretInput.value = details.secret
+  persistAccounts([...accounts, account], account.id, 'Account saved in this browser.')
+})
+
+updateAccountButton.addEventListener('click', () => {
+  const account = selectedAccount()
+  const details = currentAccountDetails()
+
+  if (!account || !details) {
+    return
+  }
+
+  if (hasDuplicateName(details.name, account.id)) {
+    accountStatus.textContent = 'Choose a unique account name.'
+    return
+  }
+
+  const updatedAccount = updateSavedAccount(account, details)
+  secretInput.value = details.secret
+  persistAccounts(
+    accounts.map((savedAccount) =>
+      savedAccount.id === updatedAccount.id ? updatedAccount : savedAccount,
+    ),
+    updatedAccount.id,
+    'Saved account updated.',
+  )
+})
+
+deleteAccountButton.addEventListener('click', () => {
+  const account = selectedAccount()
+
+  if (!account) {
+    return
+  }
+
+  if (!window.confirm(`Delete "${account.name}" from this browser?`)) {
+    return
+  }
+
+  if (persistAccounts(
+    accounts.filter((savedAccount) => savedAccount.id !== account.id),
+    '',
+    'Saved account deleted.',
+  )) {
+    accountNameInput.value = ''
+    secretInput.value = ''
+    clearCode()
+  }
+})
+
+clearAllButton.addEventListener('click', () => {
+  if (!window.confirm('Delete all saved accounts from this browser?')) {
+    return
+  }
+
+  const result = clearAccounts()
+
+  if (result.error) {
+    showStorageFailure(result.error)
+    return
+  }
+
+  accounts = []
+  storageReady = true
+  storageMessage.textContent = ''
+  accountNameInput.value = ''
+  secretInput.value = ''
+  accountStatus.textContent = 'All saved accounts were deleted.'
+  copyStatus.textContent = ''
+  clearCode()
+  renderAccountOptions()
 })
 
 copyButton.addEventListener('click', () => {
   void copyCurrentCode()
 })
 
+const initialAccounts = loadAccounts()
+accounts = initialAccounts.accounts
+
+if (initialAccounts.error) {
+  showStorageFailure(initialAccounts.error)
+}
+
+renderAccountOptions()
 window.setInterval(renderCode, 250)

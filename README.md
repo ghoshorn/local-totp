@@ -2,7 +2,7 @@
 
 A private, static, browser-only TOTP generator. It uses [OTPAuth](https://github.com/hectorm/otpauth) to calculate standard six-digit, SHA-1, 30-second codes.
 
-Secrets are held only in browser memory. The site has no API, database, analytics, local storage, or server-side secret handling.
+The site can save named accounts in the current browser profile's `localStorage`, enabling account selection on a later visit. Saved secrets are not encrypted: anyone with access to that browser profile can use them. The site has no API, database, analytics, cloud synchronization, or server-side secret handling.
 
 ## Development
 
