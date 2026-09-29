@@ -1,0 +1,264 @@
+:root {
+  color: #e9eefb;
+  background: #101828;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #94bdfd;
+  outline-offset: 3px;
+}
+
+.page-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 15% 0%, #1f3a63 0, transparent 34rem),
+    radial-gradient(circle at 95% 100%, #1b4b43 0, transparent 30rem),
+    #101828;
+}
+
+.generator {
+  width: min(100%, 38rem);
+  padding: clamp(1.5rem, 6vw, 3.5rem);
+  border: 1px solid #34425d;
+  border-radius: 1.25rem;
+  background: rgb(20 31 51 / 92%);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 28%);
+}
+
+.intro {
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: #8ee3c5;
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0.75rem;
+  color: #fff;
+  font-size: clamp(2rem, 6vw, 3rem);
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.intro-copy,
+.field-help,
+.privacy-note p {
+  color: #bdc9dd;
+  line-height: 1.55;
+}
+
+.intro-copy {
+  margin-bottom: 0;
+}
+
+label,
+.code-label {
+  display: block;
+  margin-bottom: 0.65rem;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.input-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid #64748b;
+  border-radius: 0.7rem;
+  color: #fff;
+  background: #0b1220;
+}
+
+input::placeholder {
+  color: #8c9ab0;
+}
+
+#generate,
+.copy-button {
+  border: 0;
+  border-radius: 0.7rem;
+  color: #071914;
+  background: #8ee3c5;
+  font-weight: 750;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+#generate {
+  flex: 0 0 auto;
+  padding: 0.9rem 1rem;
+}
+
+#generate:hover,
+.copy-button:hover:not(:disabled) {
+  background: #b6f4dc;
+  transform: translateY(-1px);
+}
+
+.field-help,
+.validation-message {
+  min-height: 1.45rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.875rem;
+}
+
+.validation-message {
+  color: #ffb4ab;
+}
+
+.code-panel {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #3b536f;
+  border-radius: 1rem;
+  background: #0c1728;
+  text-align: center;
+}
+
+.code-label {
+  color: #bdc9dd;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.code {
+  display: block;
+  color: #fff;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: clamp(2.75rem, 13vw, 5rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  line-height: 1;
+}
+
+.timer-row {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.5rem 0;
+}
+
+progress {
+  width: 100%;
+  height: 0.55rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 1rem;
+  accent-color: #8ee3c5;
+}
+
+progress::-webkit-progress-bar {
+  background: #263852;
+}
+
+progress::-webkit-progress-value {
+  background: #8ee3c5;
+}
+
+progress::-moz-progress-bar {
+  background: #8ee3c5;
+}
+
+.countdown {
+  margin: 0;
+  color: #bdc9dd;
+  font-size: 0.875rem;
+}
+
+.copy-button {
+  width: 100%;
+  padding: 0.9rem 1rem;
+}
+
+.copy-button:disabled {
+  cursor: not-allowed;
+  color: #8694aa;
+  background: #263852;
+}
+
+.copy-status {
+  min-height: 1.45rem;
+  margin: 0.7rem 0 0;
+  color: #8ee3c5;
+  font-size: 0.875rem;
+}
+
+.privacy-note {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #34425d;
+}
+
+.privacy-note h2 {
+  margin-bottom: 0.45rem;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.privacy-note p {
+  margin-bottom: 0;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .page-shell {
+    padding: 0;
+  }
+
+  .generator {
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .input-row {
+    flex-direction: column;
+  }
+}
